@@ -1,0 +1,26 @@
+{
+  "name": "mark-sumo-session-backend",
+  "version": "1.0.0",
+  "description": "Backend service for Mark Sumo Bot session ID generation",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": ["whatsapp", "session", "baileys", "qr-code"],
+  "author": "Mark Sumo",
+  "license": "MIT",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.19",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "pino": "^9.9.0",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.1",
+    "uuid": "^11.0.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}

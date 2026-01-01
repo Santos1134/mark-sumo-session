@@ -1,0 +1,52 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.qrBox {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 15px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+}
+
+.qrImage {
+  display: block;
+  width: 300px;
+  height: 300px;
+  border-radius: 10px;
+}
+
+.note {
+  font-size: 1.1rem;
+  color: #667eea;
+  font-weight: 600;
+}
+
+.loader {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 0.5rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .qrImage {
+    width: 250px;
+    height: 250px;
+  }
+
+  .qrBox {
+    padding: 1rem;
+  }
+}
