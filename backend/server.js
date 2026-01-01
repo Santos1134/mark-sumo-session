@@ -49,16 +49,16 @@ app.get('/api/health', (req, res) => {
 io.on('connection', (socket) => {
     console.log(`Client connected: ${socket.id}`);
 
-    // Handle session creation request
+    // Handle session creation request (QR Code method)
     socket.on('create-session', async () => {
         try {
             const sessionId = sessionManager.createSession(socket.id);
-            console.log(`Creating session: ${sessionId}`);
+            console.log(`Creating QR session: ${sessionId}`);
 
             // Send session ID to client
             socket.emit('session-created', { sessionId });
 
-            // Initialize WhatsApp connection
+            // Initialize WhatsApp connection with QR code
             await whatsappService.createConnection(sessionId, {
                 onQR: (qr) => {
                     console.log(`QR code generated for session: ${sessionId}`);
@@ -88,10 +88,68 @@ io.on('connection', (socket) => {
                     });
                     sessionManager.deleteSession(sessionId);
                 }
-            });
+            }, { usePairingCode: false });
 
         } catch (error) {
             console.error('Error creating session:', error);
+            socket.emit('error', {
+                message: 'Failed to create session. Please try again.'
+            });
+        }
+    });
+
+    // Handle pairing code session creation
+    socket.on('create-pairing-session', async (data) => {
+        try {
+            const { phoneNumber } = data;
+
+            if (!phoneNumber) {
+                socket.emit('error', {
+                    message: 'Phone number is required'
+                });
+                return;
+            }
+
+            const sessionId = sessionManager.createSession(socket.id);
+            console.log(`Creating pairing session: ${sessionId} for ${phoneNumber}`);
+
+            // Send session ID to client
+            socket.emit('session-created', { sessionId });
+
+            // Initialize WhatsApp connection with pairing code
+            await whatsappService.createConnection(sessionId, {
+                onPairingCode: (code) => {
+                    console.log(`Pairing code for session ${sessionId}: ${code}`);
+                    socket.emit('pairing-code', { code });
+                },
+                onConnected: async (authState) => {
+                    console.log(`WhatsApp connected for session: ${sessionId}`);
+
+                    // Convert auth state to session string
+                    const sessionString = await whatsappService.convertToSessionString(authState);
+
+                    // Send session string to client
+                    socket.emit('session-generated', {
+                        sessionId: sessionString
+                    });
+
+                    // Clean up
+                    setTimeout(() => {
+                        whatsappService.disconnectSession(sessionId);
+                        sessionManager.deleteSession(sessionId);
+                    }, 5000);
+                },
+                onError: (error) => {
+                    console.error(`Error in session ${sessionId}:`, error);
+                    socket.emit('error', {
+                        message: error.message || 'Failed to generate session. Please try again.'
+                    });
+                    sessionManager.deleteSession(sessionId);
+                }
+            }, { usePairingCode: true, phoneNumber });
+
+        } catch (error) {
+            console.error('Error creating pairing session:', error);
             socket.emit('error', {
                 message: 'Failed to create session. Please try again.'
             });

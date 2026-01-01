@@ -23,11 +23,13 @@ class WhatsAppService {
     /**
      * Create a WhatsApp connection for session generation
      * @param {string} sessionId - Unique session identifier
-     * @param {object} callbacks - { onQR, onConnected, onError }
+     * @param {object} callbacks - { onQR, onPairingCode, onConnected, onError }
+     * @param {object} options - { usePairingCode: boolean, phoneNumber: string }
      */
-    async createConnection(sessionId, callbacks) {
+    async createConnection(sessionId, callbacks, options = {}) {
         try {
-            const { onQR, onConnected, onError } = callbacks;
+            const { onQR, onPairingCode, onConnected, onError } = callbacks;
+            const { usePairingCode = false, phoneNumber = null } = options;
             const sessionPath = path.join(this.sessionsDir, sessionId);
 
             // Create session directory
@@ -57,21 +59,45 @@ class WhatsAppService {
             this.connections.set(sessionId, {
                 sock,
                 sessionPath,
-                callbacks
+                callbacks,
+                usePairingCode
             });
 
             // Handle credentials update
             sock.ev.on('creds.update', saveCreds);
 
+            // Request pairing code if using phone number
+            if (usePairingCode && phoneNumber && !state.creds?.registered) {
+                try {
+                    // Remove any non-digit characters from phone number
+                    const cleanNumber = phoneNumber.replace(/\D/g, '');
+                    console.log(`Requesting pairing code for: ${cleanNumber}`);
+
+                    const code = await sock.requestPairingCode(cleanNumber);
+                    console.log(`Pairing code generated: ${code}`);
+
+                    if (onPairingCode) {
+                        onPairingCode(code);
+                    }
+                } catch (error) {
+                    console.error('Error requesting pairing code:', error);
+                    onError(new Error('Failed to generate pairing code. Please check the phone number.'));
+                    this.disconnectSession(sessionId);
+                    return;
+                }
+            }
+
             // Handle connection updates
             sock.ev.on('connection.update', async (update) => {
                 const { connection, lastDisconnect, qr } = update;
 
-                // QR code generated
-                if (qr) {
+                // QR code generated (only for QR mode)
+                if (qr && !usePairingCode) {
                     try {
                         const qrDataUrl = await qrcodeService.generateQRDataURL(qr);
-                        onQR(qrDataUrl);
+                        if (onQR) {
+                            onQR(qrDataUrl);
+                        }
                     } catch (error) {
                         console.error('Error generating QR code:', error);
                         onError(error);
@@ -95,7 +121,7 @@ class WhatsAppService {
                     console.log(`Connection closed for session ${sessionId}. Status code: ${statusCode}`);
 
                     if (statusCode === DisconnectReason.loggedOut) {
-                        onError(new Error('Logged out. Please scan QR code again.'));
+                        onError(new Error('Logged out. Please try again.'));
                     } else if (!shouldReconnect) {
                         onError(new Error('Connection failed. Please try again.'));
                     }
