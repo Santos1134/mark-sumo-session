@@ -85,6 +85,20 @@ export default function GeneratePage() {
       return
     }
 
+    // Remove all non-digit characters
+    const cleanNumber = phoneNumber.replace(/\D/g, '')
+
+    // Validate phone number length (should be at least 10 digits)
+    if (cleanNumber.length < 10) {
+      toast.error('Phone number too short. Include country code (e.g., 2347012345678)')
+      return
+    }
+
+    if (cleanNumber.length > 15) {
+      toast.error('Phone number too long')
+      return
+    }
+
     setMethod('pairing')
     setStatus('connecting')
     setError(null)
@@ -93,8 +107,8 @@ export default function GeneratePage() {
     setSessionId(null)
 
     const socket = initSocket()
-    socket.emit('create-pairing-session', { phoneNumber: phoneNumber.trim() })
-    toast.loading('Creating session...', { duration: 2000 })
+    socket.emit('create-pairing-session', { phoneNumber: cleanNumber })
+    toast.loading('Generating pairing code...', { duration: 2000 })
   }
 
   const resetForm = () => {
@@ -131,14 +145,15 @@ export default function GeneratePage() {
               <div className={styles.methodCard}>
                 <div className={styles.methodIcon}>🔢</div>
                 <h3>Pairing Code</h3>
-                <p>Enter phone number and pairing code</p>
+                <p>Enter phone number with country code</p>
                 <input
                   type="tel"
-                  placeholder="Phone number (e.g., 1234567890)"
+                  placeholder="2347012345678 (with country code)"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   className={styles.input}
                 />
+                <p className={styles.hint}>Include country code (e.g., 234 for Nigeria, 1 for US)</p>
                 <button onClick={handlePairingMethod} className={styles.button}>
                   Generate Code
                 </button>
